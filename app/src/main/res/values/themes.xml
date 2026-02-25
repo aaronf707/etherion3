@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Etherion3" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/etr</item>
+        <item name="windowSplashScreenBackground">#050510</item>
+        <item name="postSplashScreenTheme">@style/Theme.Etherion3.Main</item>
+    </style>
+
+    <style name="Theme.Etherion3.Main" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+</resources>

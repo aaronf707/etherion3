@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ad-services-config>
+    <attestations>
+        <common-name>google.com</common-name>
+    </attestations>
+</ad-services-config>
