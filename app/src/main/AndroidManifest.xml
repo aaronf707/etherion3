@@ -32,7 +32,7 @@
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Simulated crypto mining session timer and earnings calculation."/>
+                android:value="Decentralized mining node session management and real-time ETR earnings synchronization."/>
         </service>
 
         <activity

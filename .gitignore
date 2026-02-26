@@ -1,3 +1,4 @@
+# Android Studio / IntelliJ
 *.iml
 .gradle
 /local.properties
@@ -7,12 +8,23 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceManager.xml
+/.idea/migrations.xml
+/.idea/runConfigurations.xml
 .externalNativeBuild
 .cxx
 local.properties
 /build
 /app/build
 captures
-.externalNativeBuild
-.cxx
 *.hprof
+
+# Output files
+/app/release/
+*.apk
+*.aab
+
+# OS files
+.DS_Store
+Thumbs.db

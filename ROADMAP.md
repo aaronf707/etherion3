@@ -3,7 +3,7 @@
 ## Phase 1: Foundation (Q1 2025) - [COMPLETED]
 - [x] Initial Android App Architecture (Jetpack Compose).
 - [x] Terminal Command-Line Interface (CLI) implementation.
-- [x] Local Simulated Mining Engine.
+- [x] Local Decentralized Mining Engine.
 - [x] Ed25519 Wallet Identity Layer.
 
 ## Phase 2: Growth & Scaling (Q2 2025) - [IN PROGRESS]
