@@ -197,10 +197,12 @@ class MiningViewModel(
                     val totalUsersCount = db.collection("users").count()
                         .get(AggregateSource.SERVER).await().count
                     
-                    // 2. Fetch count of users currently set to isMining = true
-                    // We removed the 'lastActive' filter temporarily to avoid Index errors
+                    // 2. Fetch count of TRUE active miners
+                    // Filter: isMining == true AND seen in the last 5 minutes
+                    val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
                     val activeCount = db.collection("users")
                         .whereEqualTo("isMining", true)
+                        .whereGreaterThan("lastActive", fiveMinutesAgo)
                         .count().get(AggregateSource.SERVER).await().count
 
                     // 3. Get market totals for token value
@@ -208,7 +210,7 @@ class MiningViewModel(
                     val totalMinedETR = marketSnap.getDouble("totalETRMined") ?: 1.0
                     
                     val totalRevenue = economy.calculateProjectedTotalRevenue(
-                        activeUsers = maxOf(1, activeCount), 
+                        activeUsers = activeCount, 
                         avgRewardedAdsPerUser = 2.5,
                         dataSdkOptInRate = 0.4
                     )
@@ -224,9 +226,17 @@ class MiningViewModel(
                     )
                 } catch (e: Exception) {
                     Log.e("MiningVM", "Stats update failed: ${e.message}")
-                    // Basic fallback to keep UI alive
-                    val currentActive = if (_state.value.isMining) 1L else 0L
-                    _state.value = _state.value.copy(activeMiners = currentActive)
+                    // If index isn't ready yet, this query will fail.
+                    // Fallback to simple count until index is live.
+                    try {
+                        val simpleCount = db.collection("users")
+                            .whereEqualTo("isMining", true)
+                            .count().get(AggregateSource.SERVER).await().count
+                        _state.value = _state.value.copy(activeMiners = simpleCount)
+                    } catch (e2: Exception) {
+                        val currentActive = if (_state.value.isMining) 1L else 0L
+                        _state.value = _state.value.copy(activeMiners = currentActive)
+                    }
                 }
                 delay(20000) // Refresh every 20 seconds
             }

@@ -2,6 +2,7 @@ package com.etherion.network.domain
 
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 class MiningEconomyManager {
 
@@ -9,16 +10,30 @@ class MiningEconomyManager {
     val targetPriceMoonshot = 1.00 // $1.00 USD Moonshot
     val targetPriceStability = 0.15 // $0.15 USD Stability Target (Soft Target)
 
+    // Genesis: Feb 1, 2025. Scarcity increases every 24 hours.
+    private val GENESIS_TIMESTAMP = 1738368000000L 
+    private val DAILY_DECAY_RATE = 0.015 // 1.5% daily reduction in emission
+
     // New Revenue Constants (Estimates for ETR backing)
     private val BANNER_ECPM_ESTIMATE = 0.50 // $0.50 per 1000 impressions
     private val DATA_SDK_MONTHLY_VALUE = 2.00 // $2.00 per user per month if opted-in
     private val REWARDED_AD_VALUE = 0.02 // $0.02 per rewarded ad view
 
     /**
+     * Calculates the Daily Decay Multiplier (Network Difficulty).
+     * Every day since launch, the amount earned per hashrate unit drops by 1.5%.
+     */
+    fun calculateDailyDecayMultiplier(): Double {
+        val currentTime = System.currentTimeMillis()
+        val daysElapsed = (currentTime - GENESIS_TIMESTAMP) / (1000 * 60 * 60 * 24)
+        if (daysElapsed <= 0) return 1.0
+        
+        // Compound decay: (0.985)^days
+        return (1.0 - DAILY_DECAY_RATE).pow(daysElapsed.toDouble()).coerceAtLeast(0.01)
+    }
+
+    /**
      * Regional Multipliers based on Ad Revenue (eCPM) Tiers.
-     * High: USA, CA, UK, AU, etc. (1.0x)
-     * Mid: Europe, BR, etc. (0.6x)
-     * Low: Rest of World (0.3x)
      */
     fun getRegionalMultiplier(region: String): Double {
         return when (region.uppercase()) {
@@ -31,7 +46,6 @@ class MiningEconomyManager {
 
     /**
      * Calculates the Total Projected Revenue for the ecosystem.
-     * Factors in: Rewarded Ads, 24/7 Banner Ads, and Data SDK participation.
      */
     fun calculateProjectedTotalRevenue(
         activeUsers: Long,
@@ -39,23 +53,20 @@ class MiningEconomyManager {
         dataSdkOptInRate: Double
     ): Double {
         val rewardedRev = activeUsers * avgRewardedAdsPerUser * REWARDED_AD_VALUE
-        val bannerRev = activeUsers * (BANNER_ECPM_ESTIMATE / 1000.0) * 24 * 12 // Assumes 12 impressions per hour
-        val dataSdkRev = activeUsers * dataSdkOptInRate * (DATA_SDK_MONTHLY_VALUE / 30.0) // Daily value
+        val bannerRev = activeUsers * (BANNER_ECPM_ESTIMATE / 1000.0) * 24 * 12 
+        val dataSdkRev = activeUsers * dataSdkOptInRate * (DATA_SDK_MONTHLY_VALUE / 30.0)
         
         return rewardedRev + bannerRev + dataSdkRev
     }
 
     /**
      * Calculates the Revenue Multiplier.
-     * Determines how much ETR can be mined based on 75% of total app revenue.
-     * Uses the Stability Target for distribution to ensure we don't over-promise.
      */
     fun calculateRevenueMultiplier(totalRevenueUSD: Double, totalMinedETR: Double): Double {
         val userBudgetUSD = totalRevenueUSD * 0.75
-        // Use stability price for safer distribution
         val userBudgetETR = userBudgetUSD / targetPriceStability
         
-        if (userBudgetETR <= 0) return 0.1 // Minimal floor if no revenue yet
+        if (userBudgetETR <= 0) return 0.1
         
         val ratio = userBudgetETR / max(1.0, totalMinedETR)
         return ratio.coerceIn(0.1, 2.5)
@@ -94,8 +105,6 @@ class MiningEconomyManager {
     ): Double {
         val equipmentMultiplier = equipment.tier.baseRate
         val streakMultiplier = 1.0 + (max(0, minOf(100, streakDays)) * 0.01)
-        
-        // Data SDK provides a direct 25% hashrate boost for participating nodes
         val sdkMultiplier = if (dataSdkBoost) 1.25 else 1.0
         
         val rawHashrate = baseHashrate * 
@@ -119,8 +128,9 @@ class MiningEconomyManager {
     }
 
     fun calculateEarnings(hashrate: Double): Double {
-        // Standardized production rate: 0.000005 ETR per unit of hashrate per tick
-        return hashrate * 0.000005
+        // Standardized production rate with Daily Decay applied
+        val decayMultiplier = calculateDailyDecayMultiplier()
+        return hashrate * 0.000005 * decayMultiplier
     }
 
     fun upgradeEquipment(current: MiningEquipment, targetTier: MiningEquipmentTier): MiningEquipment {

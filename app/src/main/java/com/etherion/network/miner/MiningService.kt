@@ -72,6 +72,11 @@ class MiningService : Service() {
 
         miningJob = serviceScope.launch {
             _serviceState.value = _serviceState.value.copy(isMining = true)
+            
+            // HEARTBEAT Logic: Update Firestore immediately on start
+            updateHeartbeat(true)
+
+            var secondsSinceLastHeartbeat = 0
 
             while (isActive && _serviceState.value.sessionTimeRemaining > 0) {
                 val state = _serviceState.value
@@ -112,7 +117,12 @@ class MiningService : Service() {
                     status = if (newSessionEarnings >= sessionCap) "Cap Reached" else "Mining Active"
                 )
 
-                // REMOVED: updateNotification() call from every second to avoid constant alerts
+                // HEARTBEAT: Update every 60 seconds
+                secondsSinceLastHeartbeat++
+                if (secondsSinceLastHeartbeat >= 60) {
+                    updateHeartbeat(true)
+                    secondsSinceLastHeartbeat = 0
+                }
 
                 if (newSessionTime <= 0) {
                     finalizeSession()
@@ -125,6 +135,21 @@ class MiningService : Service() {
         }
     }
 
+    private suspend fun updateHeartbeat(isMining: Boolean) {
+        val userId = auth.getUserId() ?: return
+        val db = FirebaseFirestore.getInstance()
+        try {
+            db.collection("users").document(userId).update(
+                mapOf(
+                    "isMining" to isMining,
+                    "lastActive" to System.currentTimeMillis()
+                )
+            ).await()
+        } catch (e: Exception) {
+            Log.e("MiningService", "Heartbeat failed", e)
+        }
+    }
+
     private fun showSessionEndedNotification() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -132,7 +157,6 @@ class MiningService : Service() {
         }
         val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-        // This uses the 'mining_alerts' channel which is HIGH importance to wake the user up
         val builder = NotificationCompat.Builder(this, "mining_alerts")
             .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle("Mining Session Ended")
@@ -149,6 +173,9 @@ class MiningService : Service() {
 
     private fun stopMining() {
         serviceScope.launch {
+            // HEARTBEAT: Mark as NOT mining in database
+            updateHeartbeat(false)
+            
             finalizeSession()
             miningJob?.cancel()
             miningJob = null
@@ -199,7 +226,6 @@ class MiningService : Service() {
     private fun createNotificationChannels() {
         val manager = getSystemService(NotificationManager::class.java)
 
-        // Channel 1: Static background status (MIN importance = No sound, no icon in status bar overlay)
         val miningChannel = NotificationChannel(
             "mining_status_quiet_v3",
             "Background Mining Status",
@@ -210,7 +236,6 @@ class MiningService : Service() {
         }
         manager.createNotificationChannel(miningChannel)
 
-        // Channel 2: High importance alerts for session end
         val alertChannel = NotificationChannel(
             "mining_alerts",
             "Mining Session Alerts",
@@ -241,17 +266,9 @@ class MiningService : Service() {
     }
 
     private fun updateNotification(title: String, content: String) {
-        // Now only used for rare state changes, not every second
         val notification = createNotification(title, content)
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(1, notification)
-    }
-
-    private fun formatTime(ms: Long): String {
-        val hours = ms / (1000 * 60 * 60)
-        val minutes = (ms / (1000 * 60)) % 60
-        val seconds = (ms / 1000) % 60
-        return "%02d:%02d:%02d".format(hours, minutes, seconds)
     }
 
     override fun onDestroy() {
