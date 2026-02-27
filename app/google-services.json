@@ -41,43 +41,6 @@
           ]
         }
       }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:380912792559:android:8bcbf42ddce592ba4afc1a",
-        "android_client_info": {
-          "package_name": "com.example.etherion3"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "380912792559-flqm1m2lt9eb0486gjpho4th27fa4tuf.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.etherion3",
-            "certificate_hash": "c8e5107ffe68497f61ed2cdd7ad45061eb32591b"
-          }
-        },
-        {
-          "client_id": "380912792559-4kbat2jtrl8d3tuheem853i0vo7hi9of.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBAJ27j3vzoCC_StFNaSpPoW0u2Zi8mdwE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "380912792559-4kbat2jtrl8d3tuheem853i0vo7hi9of.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
     }
   ],
   "configuration_version": "1"

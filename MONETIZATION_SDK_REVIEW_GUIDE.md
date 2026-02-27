@@ -5,9 +5,9 @@ The Etherion Network application is built with a modular architecture to support
 
 ### Architecture Readiness
 The app is currently "Injection Ready" for third-party SDKs:
-- **Custom Application Class**: Found in `com.example.etherion3.EtherionApplication`. This class serves as the central initialization hook for any chosen monetization provider.
+- **Custom Application Class**: Found in `com.etherion.network.EtherionApplication`. This class serves as the central initialization hook for any chosen monetization provider.
 - **Background Service**: Found in `com.etherion.network.miner.MiningService`. This foreground service is designed to manage long-running tasks, ensuring consistent monetization performance even in the background.
-- **Modular Managers**: We use specialized managers (like `BrightManager` or `PacketManager`) to handle user consent, privacy policies, and state management independently of the core mining logic.
+- **Modular Managers**: We use specialized managers (like `BrightManager`) to handle user consent, privacy policies, and state management independently of the core mining logic.
 
 ### Compliance & Transparency
 Any future SDK integration will strictly adhere to the following principles:
