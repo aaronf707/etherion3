@@ -3,11 +3,13 @@ package com.etherion.network.ui.settings
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +30,7 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onViewProfile: () -> Unit) {
     val context = LocalContext.current
     val viewModel: MiningViewModel = viewModel(factory = MiningViewModelFactory(context))
     val state by viewModel.state.collectAsState()
@@ -70,6 +72,20 @@ fun SettingsScreen() {
             )
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            // PROFILE BUTTON
+            Button(
+                onClick = onViewProfile,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00FF00).copy(alpha = 0.1f)),
+                border = BorderStroke(1.dp, Color(0xFF00FF00))
+            ) {
+                Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF00FF00))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("VIEW NODE IDENTITY", color = Color(0xFF00FF00), fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             // ACCOUNT SECTION
             SettingHeader("ACCOUNT")
@@ -177,7 +193,7 @@ fun SettingsScreen() {
             Button(
                 onClick = {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:support@etherion.network") // Replace with your actual support email
+                        data = Uri.parse("mailto:support@etherion.network")
                         putExtra(Intent.EXTRA_SUBJECT, "Etherion Support Request [Node: ${state.username}]")
                     }
                     try {
@@ -199,7 +215,7 @@ fun SettingsScreen() {
 
             // TECHNICAL SECTION
             SettingHeader("TECHNICAL")
-            Text("Node Version: ${state.nodeVersion ?: "1.0.4-beta"}", color = Color.Gray, fontSize = 12.sp)
+            Text("Node Version: ${state.nodeVersion}", color = Color.Gray, fontSize = 12.sp)
             Text("Network Diff: 1.42 TH", color = Color.Gray, fontSize = 12.sp)
             
             Spacer(modifier = Modifier.height(32.dp))

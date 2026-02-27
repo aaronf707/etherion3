@@ -32,6 +32,7 @@ import com.etherion.network.ui.settings.SettingsScreen
 import com.etherion.network.ui.splash.SplashScreen
 import com.etherion.network.ui.store.StoreScreen
 import com.etherion.network.ui.wallet.WalletScreen
+import com.etherion.network.ui.profile.ProfileScreen
 import com.example.etherion3.R
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -45,6 +46,7 @@ sealed class Screen(val route: String, val label: String) {
     object Wallet : Screen("wallet", "Wallet")
     object Leaderboard : Screen("leaderboard", "Ranking")
     object Settings : Screen("settings", "Settings")
+    object Profile : Screen("profile", "Profile")
 }
 
 @Composable
@@ -58,7 +60,7 @@ fun AppNavigation() {
 
     LaunchedEffect(currentUser) {
         if (currentUser == null) {
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            val currentRoute = navController.currentDestination?.route
             if (currentRoute != null && currentRoute != Screen.Auth.route && currentRoute != Screen.Splash.route && currentRoute != Screen.Legal.route) {
                 navController.navigate(Screen.Auth.route) {
                     popUpTo(0) { inclusive = true }
@@ -110,7 +112,14 @@ fun AppNavigation() {
         composable(Screen.Store.route) { MainLayout(navController) { StoreScreen() } }
         composable(Screen.Wallet.route) { MainLayout(navController) { WalletScreen() } }
         composable(Screen.Leaderboard.route) { MainLayout(navController) { LeaderboardScreen() } }
-        composable(Screen.Settings.route) { MainLayout(navController) { SettingsScreen() } }
+        composable(Screen.Settings.route) { 
+            MainLayout(navController) { 
+                SettingsScreen(onViewProfile = { navController.navigate(Screen.Profile.route) }) 
+            } 
+        }
+        composable(Screen.Profile.route) { 
+            ProfileScreen(onBack = { navController.popBackStack() }) 
+        }
     }
 }
 
@@ -151,7 +160,7 @@ fun MainLayout(navController: NavHostController, content: @Composable () -> Unit
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF0A0A15))
-                    .navigationBarsPadding() // This is the standard way to lift above the system buttons
+                    .navigationBarsPadding()
             ) {
                 AdBanner(modifier = Modifier.fillMaxWidth())
                 

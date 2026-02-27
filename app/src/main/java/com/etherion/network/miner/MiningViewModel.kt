@@ -76,7 +76,11 @@ class MiningViewModel(
         val isAdOpportunityAvailable: Boolean = false,
         val isBlockSolveAvailable: Boolean = false,
         val isDataSdkOptedIn: Boolean = false,
-        val nodeVersion: String = "1.0.4-beta"
+        val nodeVersion: String = "1.0.4-beta",
+        val maxHashrate: Double = 0.0,
+        val joinedTimestamp: Long = 0L,
+        val lifetimeMined: Double = 0.0,
+        val rank: String = "UNRANKED"
     )
 
     private val _state = MutableStateFlow(MiningState())
@@ -97,6 +101,8 @@ class MiningViewModel(
             viewModelScope.launch {
                 miningService?.serviceState?.collect { serviceState ->
                     val oldMining = _state.value.isMining
+                    val currentMaxHashrate = maxOf(_state.value.maxHashrate, serviceState.hashrate)
+                    
                     _state.value = _state.value.copy(
                         isMining = serviceState.isMining,
                         hashrate = serviceState.hashrate,
@@ -113,7 +119,8 @@ class MiningViewModel(
                         regionalMultiplier = serviceState.regionalMultiplier,
                         isAdOpportunityAvailable = serviceState.isAdOpportunityAvailable,
                         isBlockSolveAvailable = serviceState.isBlockSolveAvailable,
-                        isDataSdkOptedIn = serviceState.isDataSdkOptedIn
+                        isDataSdkOptedIn = serviceState.isDataSdkOptedIn,
+                        maxHashrate = currentMaxHashrate
                     )
                     updateLevelLogic()
                     
@@ -224,6 +231,8 @@ class MiningViewModel(
                         activeMiners = activeCount,
                         projectedTokenValue = calculatedVal
                     )
+                    
+                    updateUserRank()
                 } catch (e: Exception) {
                     Log.e("MiningVM", "Stats update failed: ${e.message}")
                     // If index isn't ready yet, this query will fail.
@@ -240,6 +249,28 @@ class MiningViewModel(
                 }
                 delay(20000) // Refresh every 20 seconds
             }
+        }
+    }
+
+    private suspend fun updateUserRank() {
+        val userId = _state.value.userId ?: return
+        val db = FirebaseFirestore.getInstance()
+        try {
+            val userBalance = _state.value.totalMined
+            val betterThanMe = db.collection("users")
+                .whereGreaterThan("balance", userBalance)
+                .count().get(AggregateSource.SERVER).await().count
+            
+            val currentRank = betterThanMe + 1
+            val rankTitle = when {
+                currentRank == 1L -> "GENESIS NODE"
+                currentRank <= 10L -> "ELITE NODE"
+                currentRank <= 100L -> "PRO NODE"
+                else -> "STANDARD NODE"
+            }
+            _state.value = _state.value.copy(rank = rankTitle)
+        } catch (e: Exception) {
+            Log.e("MiningVM", "Rank update failed", e)
         }
     }
 
@@ -271,6 +302,10 @@ class MiningViewModel(
                 val savedAdRegion = cloudData["adRegion"] as? String ?: "TIER_3"
                 val dataSdkOptIn = cloudData["dataSdkOptIn"] as? Boolean ?: false
                 val regionalMult = economy.getRegionalMultiplier(savedAdRegion)
+                
+                val joinedTs = cloudData["joinedTimestamp"] as? Long ?: user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+                val lifetimeMined = cloudData["lifetimeMined"] as? Double ?: currentBalance
+                val maxHash = cloudData["maxHashrate"] as? Double ?: 0.0
 
                 if (sessionRemaining > -SESSION_DURATION && savedSessionEndTime > lastActive) {
                     val timePassedWhileOffline = minOf(currentTime, savedSessionEndTime) - lastActive
@@ -296,11 +331,19 @@ class MiningViewModel(
                     userLevel = savedLevel,
                     adRegion = savedAdRegion,
                     regionalMultiplier = regionalMult,
-                    isDataSdkOptedIn = dataSdkOptIn
+                    isDataSdkOptedIn = dataSdkOptIn,
+                    joinedTimestamp = joinedTs,
+                    lifetimeMined = maxOf(lifetimeMined, currentBalance),
+                    maxHashrate = maxHash
                 )
                 miningService?.updateState(_state.value)
                 
                 if (sessionRemaining > 0) startMining(isAutoResume = true)
+            } else {
+                // First time user initialization in Firestore
+                val initialTimestamp = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+                _state.value = _state.value.copy(joinedTimestamp = initialTimestamp)
+                syncAllDataToFirebase()
             }
             startSyncLoop(user.uid)
         }
@@ -338,7 +381,10 @@ class MiningViewModel(
             "sessionEarnings" to currentState.sessionEarnings,
             "userLevel" to currentState.userLevel,
             "adRegion" to currentState.adRegion,
-            "dataSdkOptIn" to currentState.isDataSdkOptedIn
+            "dataSdkOptIn" to currentState.isDataSdkOptedIn,
+            "joinedTimestamp" to currentState.joinedTimestamp,
+            "lifetimeMined" to currentState.lifetimeMined,
+            "maxHashrate" to currentState.maxHashrate
         )
 
         viewModelScope.launch {
