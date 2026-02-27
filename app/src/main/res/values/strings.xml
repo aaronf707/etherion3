@@ -2,13 +2,8 @@
     <string name="app_name">Etherion Network</string>
     <string name="default_web_client_id">380912792559-4kbat2jtrl8d3tuheem853i0vo7hi9of.apps.googleusercontent.com</string>
 
-    <!-- ADMOB TEST KEYS (Temporary to verify layout) -->
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3388065201</string>
-    <string name="admob_banner_id">ca-app-pub-3940256099942544/6300978111</string>
-    <string name="admob_rewarded_id">ca-app-pub-3940256099942544/5224354917</string>
-
-    <!-- YOUR PRODUCTION KEYS (REPLACE WHEN READY) -->
-    <!-- APP ID: ca-app-pub-3566675915902061~3090999782 -->
-    <!-- BANNER ID: ca-app-pub-3566675915902061/4439381680 -->
-    <!-- REWARDED ID: ca-app-pub-3566675915902061/7924669855 -->
+    <!-- ADMOB PRODUCTION KEYS -->
+    <string name="admob_app_id">ca-app-pub-3566675915902061~3090999782</string>
+    <string name="admob_banner_id">ca-app-pub-3566675915902061/4439381680</string>
+    <string name="admob_rewarded_id">ca-app-pub-3566675915902061/7924669855</string>
 </resources>

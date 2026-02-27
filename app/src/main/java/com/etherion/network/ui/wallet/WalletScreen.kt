@@ -23,6 +23,7 @@ import com.etherion.network.miner.MiningViewModel
 import com.etherion.network.miner.MiningViewModelFactory
 import com.etherion.network.wallet.WalletViewModel
 import com.etherion.network.wallet.WalletViewModelFactory
+import com.etherion.network.R
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -37,7 +38,7 @@ fun WalletScreen() {
     val walletState by walletVm.state.collectAsState()
     val miningState by miningVm.state.collectAsState()
 
-    val adManager = remember { RewardedAdManager(context, "ca-app-pub-3940256099942544/5224354917") }
+    val adManager = remember { RewardedAdManager(context, context.getString(R.string.admob_rewarded_id)) }
     LaunchedEffect(Unit) { adManager.load() }
 
     Surface(
