@@ -7,6 +7,43 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:380912792559:android:c5bbdfbd422cd6bf4afc1a",
+        "android_client_info": {
+          "package_name": "com.etherion.network"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "380912792559-ij8dkt7m60i7dpfqkc27oevg8chai3n6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.etherion.network",
+            "certificate_hash": "c8e5107ffe68497f61ed2cdd7ad45061eb32591b"
+          }
+        },
+        {
+          "client_id": "380912792559-4kbat2jtrl8d3tuheem853i0vo7hi9of.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAJ27j3vzoCC_StFNaSpPoW0u2Zi8mdwE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "380912792559-4kbat2jtrl8d3tuheem853i0vo7hi9of.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:380912792559:android:8bcbf42ddce592ba4afc1a",
         "android_client_info": {
           "package_name": "com.example.etherion3"
@@ -19,14 +56,6 @@
           "android_info": {
             "package_name": "com.example.etherion3",
             "certificate_hash": "c8e5107ffe68497f61ed2cdd7ad45061eb32591b"
-          }
-        },
-        {
-          "client_id": "380912792559-01214995c94f7f6166e826a68b44a23e.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.etherion3",
-            "certificate_hash": "01214995c94f7f6166e826a68b44a23ec00ec7e3d88b53c9d06f45c24fa6767f"
           }
         },
         {

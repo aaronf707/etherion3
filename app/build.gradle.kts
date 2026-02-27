@@ -6,14 +6,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.etherion3"
+    // The namespace for the R class and build config
+    namespace = "com.etherion.network"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.etherion3"
+        // The unique ID for the Play Store
+        applicationId = "com.etherion.network"
         minSdk = 24
         targetSdk = 34
-        // Incremented for Play Store readiness
         versionCode = 2 
         versionName = "1.0.4-beta"
 
@@ -25,7 +26,6 @@ android {
 
     buildTypes {
         release {
-            // Enabled for production to shrink app size and protect code
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

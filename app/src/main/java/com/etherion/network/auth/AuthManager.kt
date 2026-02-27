@@ -7,7 +7,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
-import com.example.etherion3.R
+import com.etherion.network.R
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.AuthCredential
@@ -94,7 +94,7 @@ class AuthManager {
             val result = auth.signInAnonymously().await()
             result.user
         } catch (e: Exception) {
-            Log.e("AuthManager", "Anonymous sign-in failed", e)
+            Log.e("AuthManager", "Anonymous sign-in failed")
             null
         }
     }
@@ -104,7 +104,7 @@ class AuthManager {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             result.user
         } catch (e: Exception) {
-            Log.e("AuthManager", "Sign up failed", e)
+            Log.e("AuthManager", "Sign up failed")
             null
         }
     }
@@ -114,7 +114,7 @@ class AuthManager {
             val result = auth.signInWithEmailAndPassword(email, password).await()
             result.user
         } catch (e: Exception) {
-            Log.e("AuthManager", "Sign in failed", e)
+            Log.e("AuthManager", "Sign in failed")
             null
         }
     }
@@ -124,7 +124,7 @@ class AuthManager {
             val result = auth.signInWithCredential(credential).await()
             result.user
         } catch (e: Exception) {
-            Log.e("AuthManager", "Credential sign in failed", e)
+            Log.e("AuthManager", "Credential sign in failed")
             null
         }
     }
@@ -136,7 +136,7 @@ class AuthManager {
             user.linkWithCredential(credential).await()
             true
         } catch (e: Exception) {
-            Log.e("AuthManager", "Linking failed", e)
+            Log.e("AuthManager", "Linking failed")
             false
         }
     }
@@ -150,7 +150,7 @@ class AuthManager {
             user.updateProfile(profileUpdates).await()
             true
         } catch (e: Exception) {
-            Log.e("AuthManager", "Update profile failed", e)
+            Log.e("AuthManager", "Update profile failed")
             false
         }
     }
@@ -161,7 +161,7 @@ class AuthManager {
             val credentialManager = CredentialManager.create(context)
             credentialManager.clearCredentialState(ClearCredentialStateRequest())
         } catch (e: Exception) {
-            Log.e("AuthManager", "Failed to clear credential state", e)
+            Log.e("AuthManager", "Failed to clear credential state")
         }
     }
 

@@ -204,8 +204,7 @@ class MiningViewModel(
                     val totalUsersCount = db.collection("users").count()
                         .get(AggregateSource.SERVER).await().count
                     
-                    // 2. Fetch count of TRUE active miners
-                    // Filter: isMining == true AND seen in the last 5 minutes
+                    // 2. Fetch count of TRUE active miners (Heartbeat check)
                     val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
                     val activeCount = db.collection("users")
                         .whereEqualTo("isMining", true)
@@ -217,7 +216,7 @@ class MiningViewModel(
                     val totalMinedETR = marketSnap.getDouble("totalETRMined") ?: 1.0
                     
                     val totalRevenue = economy.calculateProjectedTotalRevenue(
-                        activeUsers = activeCount, 
+                        activeUsers = maxOf(1, activeCount), 
                         avgRewardedAdsPerUser = 2.5,
                         dataSdkOptInRate = 0.4
                     )
@@ -225,7 +224,6 @@ class MiningViewModel(
                     val userBudgetUSD = totalRevenue * 0.75
                     val calculatedVal = userBudgetUSD / maxOf(1.0, totalMinedETR)
 
-                    // Update UI state with actual data
                     _state.value = _state.value.copy(
                         totalDownloads = totalUsersCount,
                         activeMiners = activeCount,
@@ -235,19 +233,12 @@ class MiningViewModel(
                     updateUserRank()
                 } catch (e: Exception) {
                     Log.e("MiningVM", "Stats update failed: ${e.message}")
-                    // If index isn't ready yet, this query will fail.
-                    // Fallback to simple count until index is live.
-                    try {
-                        val simpleCount = db.collection("users")
-                            .whereEqualTo("isMining", true)
-                            .count().get(AggregateSource.SERVER).await().count
-                        _state.value = _state.value.copy(activeMiners = simpleCount)
-                    } catch (e2: Exception) {
-                        val currentActive = if (_state.value.isMining) 1L else 0L
-                        _state.value = _state.value.copy(activeMiners = currentActive)
-                    }
+                    // If high-accuracy query fails (index building), default to absolute truth:
+                    // show 1 if user is mining, otherwise 0. NO MORE GHOST FALLBACKS.
+                    val currentActive = if (_state.value.isMining) 1L else 0L
+                    _state.value = _state.value.copy(activeMiners = currentActive)
                 }
-                delay(20000) // Refresh every 20 seconds
+                delay(20000) 
             }
         }
     }
@@ -340,7 +331,6 @@ class MiningViewModel(
                 
                 if (sessionRemaining > 0) startMining(isAutoResume = true)
             } else {
-                // First time user initialization in Firestore
                 val initialTimestamp = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
                 _state.value = _state.value.copy(joinedTimestamp = initialTimestamp)
                 syncAllDataToFirebase()

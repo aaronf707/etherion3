@@ -10,7 +10,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.etherion.network.auth.AuthManager
 import com.etherion.network.domain.MiningEconomyManager
-import com.example.etherion3.MainActivity
+import com.etherion.network.MainActivity
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow

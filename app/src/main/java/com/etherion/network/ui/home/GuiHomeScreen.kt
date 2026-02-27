@@ -25,8 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etherion.network.ads.RewardedAdManager
 import com.etherion.network.miner.MiningViewModel
 import com.etherion.network.miner.MiningViewModelFactory
-import com.example.etherion3.R
-import kotlinx.coroutines.delay
+import com.etherion.network.R
 
 @Composable
 fun GuiHomeScreen() {

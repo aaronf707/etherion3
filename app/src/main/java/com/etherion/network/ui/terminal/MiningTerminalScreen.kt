@@ -23,7 +23,7 @@ import com.etherion.network.terminal.TerminalCommandEngine
 import com.etherion.network.terminal.TerminalMiningBridge
 import com.etherion.network.miner.MiningPersistence
 import com.etherion.network.terminal.TerminalLine
-import com.example.etherion3.R
+import com.etherion.network.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

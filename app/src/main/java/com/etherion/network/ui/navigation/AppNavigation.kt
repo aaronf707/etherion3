@@ -33,7 +33,7 @@ import com.etherion.network.ui.splash.SplashScreen
 import com.etherion.network.ui.store.StoreScreen
 import com.etherion.network.ui.wallet.WalletScreen
 import com.etherion.network.ui.profile.ProfileScreen
-import com.example.etherion3.R
+import com.etherion.network.R
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -60,7 +60,7 @@ fun AppNavigation() {
 
     LaunchedEffect(currentUser) {
         if (currentUser == null) {
-            val currentRoute = navController.currentDestination?.route
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
             if (currentRoute != null && currentRoute != Screen.Auth.route && currentRoute != Screen.Splash.route && currentRoute != Screen.Legal.route) {
                 navController.navigate(Screen.Auth.route) {
                     popUpTo(0) { inclusive = true }

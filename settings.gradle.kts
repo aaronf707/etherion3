@@ -16,5 +16,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "etherion3"
+rootProject.name = "etherion"
 include(":app")

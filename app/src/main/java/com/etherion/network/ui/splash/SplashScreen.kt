@@ -16,7 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.etherion3.R
+import com.etherion.network.R
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
