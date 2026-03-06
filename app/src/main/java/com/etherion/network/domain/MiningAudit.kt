@@ -2,7 +2,7 @@ package com.etherion.network.domain
 
 object MiningAudit {
     const val AUDIT_TEXT = """
-        ETHERION ECONOMIC AUDIT v2.2
+        ETHERION ECONOMIC AUDIT v2.4
         Economic Stability Framework (Soft Target)
         
         [1. VALUATION TARGETS]
@@ -15,34 +15,39 @@ object MiningAudit {
         - BANNER ADS: 24/7 passive dashboard revenue.
         - ANONYMOUS DATA SDK: Optional high-value module (${'$'}2.00/user/mo).
         
-        [3. SUSTAINABLE TIER PROJECTIONS]
-        Calculated at 0.108 ETR/hr (Base) to ensure 100% backing.
+        [3. TEAM DYNAMICS & GROWTH]
+        - TEAM BOOST: +5% hashrate per active member.
+        - DIVIDENDS: 10% mining kickback for team leaders.
+        - SCARCITY: 1.5% daily emission decay protects supply.
+        
+        [4. SUSTAINABLE TIER PROJECTIONS]
+        Calculated at 0.36 ETR/hr (Base) to ensure 100% backing.
         
         BASIC CPU (Base):
-        - Day: 2.59 ETR (~${'$'}0.39)
-        - Month: ~77 ETR (~${'$'}11)
+        - Day: 8.64 ETR (~${'$'}1.29)
+        - Month: ~259 ETR (~${'$'}38)
         
         ENTRY GPU (2.0x):
-        - Day: 5.18 ETR (~${'$'}0.78)
-        - Month: ~155 ETR (~${'$'}23)
+        - Day: 17.28 ETR (~${'$'}2.59)
+        - Month: ~518 ETR (~${'$'}77)
         
         PRO GPU (4.0x):
-        - Day: 10.36 ETR (~${'$'}1.55)
-        - Month: ~311 ETR (~${'$'}46)
+        - Day: 34.56 ETR (~${'$'}5.18)
+        - Month: ~1,036 ETR (~${'$'}155)
         
         SMALL RIG (8.0x):
-        - Day: 20.73 ETR (~${'$'}3.11)
-        - Month: ~622 ETR (~${'$'}93)
+        - Day: 69.12 ETR (~${'$'}10.36)
+        - Month: ~2,073 ETR (~${'$'}311)
         
         STANDARD ASIC (12.0x):
-        - Day: 31.10 ETR (~${'$'}4.66)
-        - Month: ~933 ETR (~${'$'}140)
+        - Day: 103.68 ETR (~${'$'}15.55)
+        - Month: ~3,110 ETR (~${'$'}466)
         
         ENTERPRISE NODE (20.0x):
-        - Day: 51.84 ETR (~${'$'}7.77)
-        - Month: ~1,555 ETR (~${'$'}233)
+        - Day: 172.80 ETR (~${'$'}25.92)
+        - Month: ~5,184 ETR (~${'$'}777)
         
-        [4. PARTICIPATION BOOSTS]
+        [5. PARTICIPATION BOOSTS]
         - DATA SDK OPT-IN: +25% Hashrate bonus.
         - AD OVERCLOCK: +50% Hashrate for 1 hour.
         - STREAK BONUS: Up to +100% (1% per day).

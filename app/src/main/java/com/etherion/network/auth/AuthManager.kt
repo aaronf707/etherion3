@@ -1,6 +1,7 @@
 package com.etherion.network.auth
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
@@ -151,6 +152,20 @@ class AuthManager {
             true
         } catch (e: Exception) {
             Log.e("AuthManager", "Update profile failed")
+            false
+        }
+    }
+
+    suspend fun updatePhotoUri(uri: Uri): Boolean {
+        val user = auth.currentUser ?: return false
+        return try {
+            val profileUpdates = userProfileChangeRequest {
+                photoUri = uri
+            }
+            user.updateProfile(profileUpdates).await()
+            true
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Update photo failed")
             false
         }
     }

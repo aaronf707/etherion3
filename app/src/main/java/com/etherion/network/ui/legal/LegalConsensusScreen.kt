@@ -31,6 +31,8 @@ fun LegalConsensusScreen(onAccepted: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding() // This fixes the top being cut off by the notch/status bar
+                .navigationBarsPadding() // Ensures the bottom button isn't cut off by gesture pill
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

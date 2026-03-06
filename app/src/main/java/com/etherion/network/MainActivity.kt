@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.etherion.network.ads.ConsentManager
 import com.etherion.network.ui.navigation.AppNavigation
 import com.etherion.network.ui.theme.EtherionTheme
@@ -28,6 +29,9 @@ class MainActivity : ComponentActivity() {
     ) { _: Boolean -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Handle the splash screen transition before super.onCreate
+        installSplashScreen()
+
         // Force no title bar before super.onCreate
         requestWindowFeature(Window.FEATURE_NO_TITLE)
 

@@ -18,11 +18,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.etherion.network.auth.AuthManager
 import com.etherion.network.miner.MiningPersistence
+import com.etherion.network.miner.MiningViewModel
+import com.etherion.network.miner.MiningViewModelFactory
 import com.etherion.network.ui.ads.AdBanner
 import com.etherion.network.ui.auth.AuthScreen
 import com.etherion.network.ui.home.GuiHomeScreen
@@ -33,6 +36,8 @@ import com.etherion.network.ui.splash.SplashScreen
 import com.etherion.network.ui.store.StoreScreen
 import com.etherion.network.ui.wallet.WalletScreen
 import com.etherion.network.ui.profile.ProfileScreen
+import com.etherion.network.ui.team.TeamHubScreen
+import com.etherion.network.ui.components.NotificationDialog
 import com.etherion.network.R
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -47,6 +52,7 @@ sealed class Screen(val route: String, val label: String) {
     object Leaderboard : Screen("leaderboard", "Ranking")
     object Settings : Screen("settings", "Settings")
     object Profile : Screen("profile", "Profile")
+    object TeamHub : Screen("team_hub", "Team")
 }
 
 @Composable
@@ -55,8 +61,22 @@ fun AppNavigation() {
     val context = LocalContext.current
     val authManager = remember { AuthManager() }
     val persistence = remember { MiningPersistence(context) }
+    val miningViewModel: MiningViewModel = viewModel(factory = MiningViewModelFactory(context))
+    val state by miningViewModel.state.collectAsState()
     val currentUser by authManager.userFlow.collectAsState(initial = authManager.currentUser)
     val scope = rememberCoroutineScope()
+    
+    var showNotificationDialog by remember { mutableStateOf(false) }
+
+    if (showNotificationDialog) {
+        NotificationDialog(
+            notifications = state.notifications,
+            onDismiss = { 
+                showNotificationDialog = false 
+                miningViewModel.markNotificationsAsRead()
+            }
+        )
+    }
 
     LaunchedEffect(currentUser) {
         if (currentUser == null) {
@@ -108,23 +128,73 @@ fun AppNavigation() {
             })
         }
 
-        composable(Screen.Home.route) { MainLayout(navController) { GuiHomeScreen() } }
-        composable(Screen.Store.route) { MainLayout(navController) { StoreScreen() } }
-        composable(Screen.Wallet.route) { MainLayout(navController) { WalletScreen() } }
-        composable(Screen.Leaderboard.route) { MainLayout(navController) { LeaderboardScreen() } }
+        composable(Screen.Home.route) { 
+            MainLayout(
+                navController, 
+                unreadCount = state.unreadNotificationCount,
+                onNotificationClick = { showNotificationDialog = true }
+            ) { 
+                GuiHomeScreen(onNavigateToTeamOpt = { navController.navigate(Screen.TeamHub.route) }) 
+            } 
+        }
+        
+        composable(Screen.Store.route) { 
+            MainLayout(
+                navController,
+                unreadCount = state.unreadNotificationCount,
+                onNotificationClick = { showNotificationDialog = true }
+            ) { 
+                StoreScreen() 
+            } 
+        }
+        
+        composable(Screen.Wallet.route) { 
+            MainLayout(
+                navController,
+                unreadCount = state.unreadNotificationCount,
+                onNotificationClick = { showNotificationDialog = true }
+            ) { 
+                WalletScreen() 
+            } 
+        }
+        
+        composable(Screen.Leaderboard.route) { 
+            MainLayout(
+                navController,
+                unreadCount = state.unreadNotificationCount,
+                onNotificationClick = { showNotificationDialog = true }
+            ) { 
+                LeaderboardScreen() 
+            } 
+        }
+        
         composable(Screen.Settings.route) { 
-            MainLayout(navController) { 
+            MainLayout(
+                navController,
+                unreadCount = state.unreadNotificationCount,
+                onNotificationClick = { showNotificationDialog = true }
+            ) { 
                 SettingsScreen(onViewProfile = { navController.navigate(Screen.Profile.route) }) 
             } 
         }
+        
         composable(Screen.Profile.route) { 
             ProfileScreen(onBack = { navController.popBackStack() }) 
+        }
+        
+        composable(Screen.TeamHub.route) {
+            TeamHubScreen(onBack = { navController.popBackStack() })
         }
     }
 }
 
 @Composable
-fun MainLayout(navController: NavHostController, content: @Composable () -> Unit) {
+fun MainLayout(
+    navController: NavHostController, 
+    unreadCount: Int = 0,
+    onNotificationClick: () -> Unit = {},
+    content: @Composable () -> Unit
+) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color(0xFF050510),
@@ -135,24 +205,43 @@ fun MainLayout(navController: NavHostController, content: @Composable () -> Unit
                     .fillMaxWidth()
                     .statusBarsPadding()
                     .background(Color(0xFF050510))
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.etr),
                     contentDescription = "Etherion Logo",
-                    modifier = Modifier.size(54.dp),
+                    modifier = Modifier.size(40.dp),
                     contentScale = ContentScale.Fit
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "ETHERION NETWORK",
                     color = Color.White,
-                    fontSize = 22.sp,
+                    fontSize = 18.sp,
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.weight(1f)
                 )
+                
+                // NOTIFICATION BELL ICON
+                IconButton(onClick = onNotificationClick) {
+                    BadgedBox(
+                        badge = {
+                            if (unreadCount > 0) {
+                                Badge(containerColor = Color.Red) {
+                                    Text(unreadCount.toString(), color = Color.White)
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Notifications,
+                            contentDescription = "Notifications",
+                            tint = if (unreadCount > 0) Color(0xFF00FF00) else Color.Gray
+                        )
+                    }
+                }
             }
         },
         bottomBar = {

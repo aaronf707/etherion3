@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.Etherion" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenAnimatedIcon">@drawable/etr</item>
+        <!-- The icon to display during the system splash screen -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <!-- Matches the background color of your app's SplashScreen.kt -->
         <item name="windowSplashScreenBackground">#050510</item>
+        <!-- The theme to use after the splash screen is dismissed -->
         <item name="postSplashScreenTheme">@style/Theme.Etherion.Main</item>
     </style>
 

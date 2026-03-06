@@ -20,38 +20,35 @@ class ReferralManager(private val context: Context) {
     }
 
     /**
-     * Gets local code or generates a new one and registers it in Firestore.
+     * Gets the user's permanent referral code. 
+     * Checks Firestore first, then generates and saves if it doesn't exist.
      */
     suspend fun getOrCreateReferralCode(userId: String): String {
-        val prefs = context.dataStore.data.first()
-        var code = prefs[KEY_REFERRAL_CODE]
-
-        if (code == null) {
-            code = generateCode()
-            context.dataStore.edit { it[KEY_REFERRAL_CODE] = code }
+        val userRef = db.collection("users").document(userId)
+        val userDoc = userRef.get().await()
+        
+        val existingCode = userDoc.getString("myReferralCode")
+        if (existingCode != null && existingCode.isNotBlank()) {
+            return existingCode
         }
 
-        // Register/Update code in Firestore
-        val codeData = mapOf(
-            "uid" to userId,
-            "code" to code
-        )
-        db.collection("referralCodes").document(code).set(codeData, SetOptions.merge()).await()
+        // If no code exists in Firestore, generate a new one
+        val newCode = generateCode()
+        userRef.update("myReferralCode", newCode).await()
         
-        return code
+        // Also save it in the referralCodes collection for fast lookups
+        val codeData = mapOf("uid" to userId, "code" to newCode)
+        db.collection("referralCodes").document(newCode).set(codeData, SetOptions.merge()).await()
+        
+        return newCode
     }
 
-    /**
-     * Applies a referral code by verifying it in Firestore and linking the user.
-     * Rewarded: Both parties receive a flat ETR bonus instead of a hashrate boost.
-     */
     suspend fun applyReferrer(userId: String, code: String): Pair<Boolean, String> {
         val prefs = context.dataStore.data.first()
-        if (prefs[KEY_REFERRER] != null) return Pair(false, "Referral already set.")
+        if (prefs[KEY_REFERRER] != null) return Pair(false, "Referral already established.")
 
         val uppercaseCode = code.uppercase().trim()
 
-        // 1. Check if code exists
         val codeDoc = db.collection("referralCodes").document(uppercaseCode).get().await()
         if (!codeDoc.exists()) return Pair(false, "Invalid referral code.")
 
@@ -59,34 +56,47 @@ class ReferralManager(private val context: Context) {
         if (referrerUid == userId) return Pair(false, "Cannot refer yourself.")
 
         try {
-            // 2. Atomic update: reward both parties with a flat ETR bonus
             val batch = db.batch()
-            
-            // Referrer gets a token bonus (1.0 ETR)
-            val referrerRef = db.collection("users").document(referrerUid)
-            batch.update(referrerRef, "balance", FieldValue.increment(1.0))
-            
-            // Referee also gets a token bonus (1.0 ETR)
-            val refereeRef = db.collection("users").document(userId)
-            batch.update(refereeRef, "balance", FieldValue.increment(1.0))
-            
-            // Log the referral link
+
+            // 1. Update Referee (Current User) - GIVE 1.0 ETR INSTANTLY
+            val userRef = db.collection("users").document(userId)
+            batch.set(userRef, mapOf(
+                "balance" to FieldValue.increment(1.0),
+                "referrerUid" to referrerUid
+            ), SetOptions.merge())
+
+            // 2. Record the link in the "referrals" collection
             val referralLogRef = db.collection("referrals").document(userId)
-            val referralData = mapOf(
-                "referrer" to uppercaseCode,
+            val linkData = mapOf(
                 "referrerUid" to referrerUid,
                 "refereeUid" to userId,
+                "code" to uppercaseCode,
                 "bonusETR" to 1.0,
+                "claimedByReferrer" to false,
                 "timestamp" to System.currentTimeMillis()
             )
-            batch.set(referralLogRef, referralData)
+            batch.set(referralLogRef, linkData)
+
+            // 3. Create a Notification for the Referrer
+            // Get referee's name for the notification
+            val refereeDoc = db.collection("users").document(userId).get().await()
+            val refereeName = refereeDoc.getString("username") ?: "A new miner"
             
+            val notificationRef = db.collection("users").document(referrerUid).collection("notifications").document()
+            val notificationData = mapOf(
+                "title" to "New Referral Established",
+                "message" to "$refereeName has joined your team! Your hashrate has been boosted by +5%.",
+                "timestamp" to System.currentTimeMillis(),
+                "isRead" to false,
+                "type" to "REFERRAL"
+            )
+            batch.set(notificationRef, notificationData)
+
             batch.commit().await()
 
-            // 3. Save link locally
             context.dataStore.edit { it[KEY_REFERRER] = uppercaseCode }
             
-            return Pair(true, "Success! +1.00 ETR Bonus applied to both accounts.")
+            return Pair(true, "Success! 1.00 ETR Signup Bonus added to your node.")
         } catch (e: Exception) {
             return Pair(false, "Sync Error: ${e.message}")
         }

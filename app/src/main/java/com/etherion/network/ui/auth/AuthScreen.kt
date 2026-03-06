@@ -1,13 +1,13 @@
 package com.etherion.network.ui.auth
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etherion.network.auth.AuthViewModel
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import java.util.*
 
 @Composable
@@ -34,6 +36,11 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var referralCode by remember { mutableStateOf("") }
+    var showReferralInput by remember { mutableStateOf(false) }
+    
+    // Referral Validation State
+    var isCheckingCode by remember { mutableStateOf(false) }
+    var isCodeValid by remember { mutableStateOf<Boolean?>(null) }
 
     val regions = listOf(
         "TIER_1" to "North America / UK / Australia (High Yield)",
@@ -44,6 +51,24 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
     LaunchedEffect(state.isSuccess) {
         if (state.isSuccess) {
             onAuthSuccess()
+        }
+    }
+
+    // Auto-check referral code as the user types
+    LaunchedEffect(referralCode) {
+        val cleanCode = referralCode.uppercase().trim()
+        if (cleanCode.length >= 8) {
+            isCheckingCode = true
+            try {
+                val db = FirebaseFirestore.getInstance()
+                val doc = db.collection("referralCodes").document(cleanCode).get().await()
+                isCodeValid = doc.exists()
+            } catch (e: Exception) {
+                isCodeValid = false
+            }
+            isCheckingCode = false
+        } else {
+            isCodeValid = null
         }
     }
 
@@ -68,45 +93,44 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email", color = Color(0xFF00FF00)) },
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color(0xFF00FF00),
-                    unfocusedIndicatorColor = Color(0xFF004400)
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-            )
+            if (!isSignUp) {
+                // LOGIN UI
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email", color = Color(0xFF00FF00)) },
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color(0xFF00FF00),
+                        unfocusedIndicatorColor = Color(0xFF004400)
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password", color = Color(0xFF00FF00)) },
-                visualTransformation = PasswordVisualTransformation(),
-                colors = TextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color(0xFF00FF00),
-                    unfocusedIndicatorColor = Color(0xFF004400)
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-            )
-
-            if (isSignUp) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Location info - Read only to prevent lying
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password", color = Color(0xFF00FF00)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color(0xFF00FF00),
+                        unfocusedIndicatorColor = Color(0xFF004400)
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                )
+            } else {
+                // SIGN UP UI - Location & Referral
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF101020)),
@@ -129,31 +153,84 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                             fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace
                         )
-                        Text(
-                            text = "Location verified via IP geolocation to ensure fair yield distribution.",
-                            color = Color.Gray,
-                            fontSize = 10.sp,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 OutlinedTextField(
-                    value = referralCode,
-                    onValueChange = { referralCode = it },
-                    label = { Text("Referral Code (Optional)", color = Color(0xFF00FFFF)) },
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email", color = Color(0xFF00FF00)) },
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color(0xFF00FFFF),
-                        unfocusedIndicatorColor = Color(0xFF004444)
+                        focusedIndicatorColor = Color(0xFF00FF00),
+                        unfocusedIndicatorColor = Color(0xFF004400)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password", color = Color(0xFF00FF00)) },
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color(0xFF00FF00),
+                        unfocusedIndicatorColor = Color(0xFF004400)
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                )
+
+                // REFERRAL SECTION - Only shown during sign up
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (showReferralInput) {
+                    OutlinedTextField(
+                        value = referralCode,
+                        onValueChange = { referralCode = it },
+                        label = { Text("Referral Code (Optional)", color = Color(0xFF00FFFF)) },
+                        trailingIcon = {
+                            if (isCheckingCode) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color(0xFF00FFFF))
+                            } else if (isCodeValid == true) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = "Valid", tint = Color.Green)
+                            } else if (isCodeValid == false) {
+                                Icon(Icons.Default.Error, contentDescription = "Invalid", tint = Color.Red)
+                            }
+                        },
+                        supportingText = {
+                            if (isCodeValid == true) {
+                                Text("VALID REFERRAL CODE - 1.00 ETR BONUS ACTIVE", color = Color.Green, fontSize = 10.sp)
+                            } else if (isCodeValid == false) {
+                                Text("INVALID CODE - PLEASE CHECK AGAIN", color = Color.Red, fontSize = 10.sp)
+                            }
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = if (isCodeValid == true) Color.Green else if (isCodeValid == false) Color.Red else Color(0xFF00FFFF),
+                            unfocusedIndicatorColor = if (isCodeValid == true) Color.Green.copy(alpha = 0.5f) else if (isCodeValid == false) Color.Red.copy(alpha = 0.5f) else Color(0xFF004444)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    TextButton(onClick = { showReferralInput = true }) {
+                        Text("Have an invite code?", color = Color(0xFF00FFFF), fontSize = 12.sp)
+                    }
+                }
             }
 
             if (state.error != null) {
@@ -185,7 +262,7 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             
             Button(
-                onClick = { viewModel.signInWithGoogle(context, if (isSignUp) referralCode else null) },
+                onClick = { viewModel.signInWithGoogle(context, if (isSignUp && referralCode.isNotBlank() && isCodeValid == true) referralCode else null) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 enabled = !state.isLoading
@@ -195,7 +272,12 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { isSignUp = !isSignUp }) {
+            TextButton(onClick = { 
+                isSignUp = !isSignUp 
+                showReferralInput = false 
+                referralCode = ""
+                isCodeValid = null
+            }) {
                 Text(
                     text = if (isSignUp) "Already have an account? Login" else "Don't have an account? Sign Up",
                     color = Color(0xFF00FFC8)

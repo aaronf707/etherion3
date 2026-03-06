@@ -24,3 +24,7 @@
 -keep class com.etherion.network.miner.MiningViewModel$MiningState { *; }
 -keep class com.etherion.network.wallet.WalletViewModel$Transaction { *; }
 -keep class com.etherion.network.domain.** { *; }
+
+# Fix for Missing classes detected while running R8 (Android 14 / API 34 specific classes)
+-dontwarn android.media.LoudnessCodecController
+-dontwarn android.media.LoudnessCodecController$OnLoudnessCodecUpdateListener

@@ -48,7 +48,19 @@ class MiningService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            "START" -> startMining()
+            "START" -> {
+                // Check if we were passed a specific resume time
+                val resumeTime = intent.getLongExtra("remaining_time", -1L)
+                val resumeEarnings = intent.getDoubleExtra("session_earnings", -1.0)
+                
+                if (resumeTime != -1L) {
+                    _serviceState.value = _serviceState.value.copy(
+                        sessionTimeRemaining = resumeTime,
+                        sessionEarnings = if (resumeEarnings != -1.0) resumeEarnings else _serviceState.value.sessionEarnings
+                    )
+                }
+                startMining()
+            }
             "STOP" -> stopMining()
         }
         return START_STICKY
@@ -59,6 +71,7 @@ class MiningService : Service() {
         
         val sessionDuration = 4 * 60 * 60 * 1000L
         
+        // Only reset to 4 hours if there is NO existing time remaining
         if (_serviceState.value.sessionTimeRemaining <= 0) {
             _serviceState.value = _serviceState.value.copy(
                 sessionTimeRemaining = sessionDuration,
@@ -66,14 +79,11 @@ class MiningService : Service() {
             )
         }
         
-        // Start foreground with a static, silent notification
         val notification = createNotification("Mining Active", "Etherion Node is accumulating ETR in background.")
         startForeground(1, notification)
 
         miningJob = serviceScope.launch {
             _serviceState.value = _serviceState.value.copy(isMining = true)
-            
-            // HEARTBEAT Logic: Update Firestore immediately on start
             updateHeartbeat(true)
 
             var secondsSinceLastHeartbeat = 0
@@ -86,6 +96,7 @@ class MiningService : Service() {
                 val hashrate = economy.calculateHashrate(
                     equipment = state.equipment, 
                     streakDays = state.streak,
+                    teamSize = state.teamSize,
                     integrity = state.equipment.integrity,
                     adBoostMultiplier = boostMultiplier,
                     regionalMultiplier = state.regionalMultiplier,
@@ -117,7 +128,6 @@ class MiningService : Service() {
                     status = if (newSessionEarnings >= sessionCap) "Cap Reached" else "Mining Active"
                 )
 
-                // HEARTBEAT: Update every 60 seconds
                 secondsSinceLastHeartbeat++
                 if (secondsSinceLastHeartbeat >= 60) {
                     updateHeartbeat(true)
@@ -173,9 +183,7 @@ class MiningService : Service() {
 
     private fun stopMining() {
         serviceScope.launch {
-            // HEARTBEAT: Mark as NOT mining in database
             updateHeartbeat(false)
-            
             finalizeSession()
             miningJob?.cancel()
             miningJob = null
@@ -211,6 +219,19 @@ class MiningService : Service() {
             try {
                 db.collection("users").document(userId).collection("rewards").add(tx).await()
                 db.collection("users").document(userId).update("balance", newBalance).await()
+                
+                if (state.referrerUid != null) {
+                    val dividendAmount = earnings * 0.10
+                    val dividendLog = mapOf(
+                        "referrerUid" to state.referrerUid,
+                        "refereeUid" to userId,
+                        "bonusAmount" to dividendAmount,
+                        "claimedByReferrer" to false,
+                        "timestamp" to System.currentTimeMillis(),
+                        "type" to "TEAM_DIVIDEND"
+                    )
+                    db.collection("referral_dividends").add(dividendLog).await()
+                }
             } catch (e: Exception) {
                 Log.e("MiningService", "Failed to sync payout", e)
             }
@@ -225,7 +246,6 @@ class MiningService : Service() {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannels() {
         val manager = getSystemService(NotificationManager::class.java)
-
         val miningChannel = NotificationChannel(
             "mining_status_quiet_v3",
             "Background Mining Status",
@@ -263,12 +283,6 @@ class MiningService : Service() {
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
-    }
-
-    private fun updateNotification(title: String, content: String) {
-        val notification = createNotification(title, content)
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(1, notification)
     }
 
     override fun onDestroy() {
