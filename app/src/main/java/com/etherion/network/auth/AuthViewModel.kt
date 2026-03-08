@@ -78,12 +78,14 @@ class AuthViewModel(private val authManager: AuthManager = AuthManager()) : View
     }
 
     private fun mapCountryToTier(code: String): String {
-        val tier1 = listOf("US", "CA", "GB", "AU", "NZ")
+        // Expanded list for better accuracy
+        val tier1 = listOf("US", "USA", "CA", "CAN", "GB", "GBR", "AU", "AUS", "NZ", "NZL")
         val tier2 = listOf("AT", "BE", "DK", "FI", "FR", "DE", "IE", "IT", "LU", "NL", "NO", "PT", "ES", "SE", "CH", "JP", "KR", "SG", "BR")
         
+        val cleanCode = code.uppercase().trim()
         return when {
-            tier1.contains(code.uppercase()) -> "TIER_1"
-            tier2.contains(code.uppercase()) -> "TIER_2"
+            tier1.contains(cleanCode) -> "TIER_1"
+            tier2.contains(cleanCode) -> "TIER_2"
             else -> "TIER_3"
         }
     }
@@ -92,7 +94,6 @@ class AuthViewModel(private val authManager: AuthManager = AuthManager()) : View
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             
-            // ENSURE location detection is finished before proceeding
             val location = detectionJob?.await() ?: Pair("Unknown", "TIER_3")
             val country = location.first
             val region = location.second
@@ -143,7 +144,6 @@ class AuthViewModel(private val authManager: AuthManager = AuthManager()) : View
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             
-            // Wait for location detection
             val location = detectionJob?.await() ?: Pair("Unknown", "TIER_3")
             
             val user = authManager.signInWithGoogle(context)

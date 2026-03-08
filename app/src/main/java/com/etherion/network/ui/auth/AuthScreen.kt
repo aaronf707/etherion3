@@ -54,10 +54,10 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
         }
     }
 
-    // Auto-check referral code as the user types
+    // Auto-check referral code as the user types (Now starting at 3 characters)
     LaunchedEffect(referralCode) {
         val cleanCode = referralCode.uppercase().trim()
-        if (cleanCode.length >= 8) {
+        if (cleanCode.length >= 3) {
             isCheckingCode = true
             try {
                 val db = FirebaseFirestore.getInstance()
@@ -81,6 +81,9 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
                 .padding(32.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -130,7 +133,7 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
             } else {
-                // SIGN UP UI - Location & Referral
+                // SIGN UP UI
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF101020)),
@@ -192,7 +195,7 @@ fun AuthScreen(onAuthSuccess: () -> Unit) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
 
-                // REFERRAL SECTION - Only shown during sign up
+                // REFERRAL SECTION
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 if (showReferralInput) {

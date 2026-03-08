@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +42,7 @@ fun SettingsScreen(onViewProfile: () -> Unit) {
     var showRules by remember { mutableStateOf(false) }
     var showAudit by remember { mutableStateOf(false) }
     var showPolicy by remember { mutableStateOf(false) }
+    var showFAQ by remember { mutableStateOf(false) }
     var showUsernameDialog by remember { mutableStateOf(false) }
     var inviteCode by remember { mutableStateOf("Loading...") }
 
@@ -191,6 +193,19 @@ fun SettingsScreen(onViewProfile: () -> Unit) {
             // SUPPORT SECTION
             SettingHeader("SUPPORT")
             Button(
+                onClick = { showFAQ = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF202030)),
+                border = BorderStroke(1.dp, Color(0xFF00FFFF))
+            ) {
+                Icon(Icons.Default.Help, contentDescription = null, tint = Color(0xFF00FFFF))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("HELP & FAQ", color = Color(0xFF00FFFF), fontWeight = FontWeight.Bold)
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
                 onClick = {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
                         data = Uri.parse("mailto:support@etherion.network")
@@ -292,6 +307,60 @@ fun SettingsScreen(onViewProfile: () -> Unit) {
             },
             confirmButton = {
                 TextButton(onClick = { showPolicy = false }) {
+                    Text("CLOSE", color = Color(0xFF00FF00))
+                }
+            },
+            containerColor = Color(0xFF101020)
+        )
+    }
+
+    if (showFAQ) {
+        AlertDialog(
+            onDismissRequest = { showFAQ = false },
+            title = { Text("Help & FAQ", color = Color(0xFF00FF00), fontFamily = FontFamily.Monospace) },
+            text = {
+                Text(
+                    """
+                        🚀 GENERAL QUESTIONS
+                        
+                        Q: What is Etherion Network?
+                        A: A decentralized mobile mining ecosystem allowing users to establish mining nodes directly on their devices.
+                        
+                        Q: Is this real mining?
+                        A: It uses a 'Proof of Participation' model, simulating technical aspects while rewards are backed by ecosystem revenue.
+                        
+                        ⛏️ MINING & HASHRATE
+                        
+                        Q: How do I start mining?
+                        A: Navigate to Dashboard and click 'Engage Miner'. Sessions last 4 hours.
+                        
+                        Q: What determines hashrate?
+                        A: Hardware Tier, Team Boost (+5% per member), Streak, and Region.
+                        
+                        👥 REFERRALS & TEAMS
+                        
+                        Q: What is the benefit of joining a team?
+                        A: Using a referral code grants an instant 1.00 ETR Signup Bonus.
+                        
+                        Q: What do I get for inviting others?
+                        A: A permanent +5% hashrate boost and 10% Mining Dividends from their sessions.
+                        
+                        💎 TOKENOMICS
+                        
+                        Q: What is the total supply?
+                        A: Hard-capped at 21,000,000 ETR.
+                        
+                        Q: What is 'Daily Network Decay'?
+                        A: Network difficulty increases by 1.5% every 24 hours to preserve value.
+                    """.trimIndent(),
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showFAQ = false }) {
                     Text("CLOSE", color = Color(0xFF00FF00))
                 }
             },

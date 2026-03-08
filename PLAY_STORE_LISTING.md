@@ -48,17 +48,36 @@ Etherion Network is built on a foundation of transparency.
 
 ## 🛡️ Data Safety Form Guide
 
-When filling out the "Data Safety" section in the Play Console, use these answers:
+Use these exact answers to pass the Play Store review quickly.
 
-1.  **Does your app collect or share any of the required user data types?** -> **Yes**
-2.  **Is all of the user data collected by your app encrypted in transit?** -> **Yes**
-3.  **Do you provide a way for users to request that their data be deleted?** -> **Yes**
+### **Step 0: Account Creation & Deletion**
+*   **Which methods of account creation does your app support?** -> Select **Username and password** AND **OAuth**.
+*   **Delete account URL**: Paste the link to your GitHub Privacy Policy. 
+    *   *Link format:* `https://github.com/[YOUR_USERNAME]/etherion3/blob/main/PRIVACY_POLICY.md`
+*   **Does your app allow users to create an account?** -> **Yes**
+*   **Can users request their account be deleted?** -> **Yes**
 
-**Data Types Collected:**
-*   **Location**: Precise Location (Required for IP-based yield verification and AdMob).
-*   **Personal Info**: Name and Email address (For account creation/sync).
-*   **App Activity**: App interactions (For mining actions).
-*   **Device or other IDs**: Device IDs (Required for AdMob).
+### **Step 1: Data Collection & Security**
+*   Does your app collect or share any of the required user data types? **Yes**
+*   Is all of the user data collected by your app encrypted in transit? **Yes**
+*   Do you provide a way for users to request that their data be deleted? **Yes**
+
+### **Step 2: Data Types (The Checklist)**
+Select these 4 categories:
+1.  **Location** -> Precise location
+2.  **Personal info** -> Name, Email address
+3.  **App activity** -> App interactions
+4.  **Device or other IDs** -> Device or other IDs
+
+### **Step 3: Data Usage Details (How they are used)**
+
+| Data Type | Collected | Shared | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Precise Location** | Yes | **Yes (AdMob)** | App functionality & Analytics |
+| **Name** | Yes | No | Account management |
+| **Email Address** | Yes | No | Account management |
+| **App Interactions** | Yes | No | Analytics |
+| **Device IDs** | Yes | **Yes (AdMob)** | Advertising & Analytics |
 
 ---
 

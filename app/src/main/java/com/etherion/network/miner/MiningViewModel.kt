@@ -129,9 +129,10 @@ class MiningViewModel(
             
             viewModelScope.launch {
                 miningService?.serviceState?.collect { serviceState ->
-                    val oldMining = _state.value.isMining
                     val currentMaxHashrate = maxOf(_state.value.maxHashrate, serviceState.hashrate)
                     
+                    // CRITICAL FIX: Only copy SESSION data from service. 
+                    // Do NOT copy identity data (teamSize, username) which should come from ViewModel/Cloud.
                     _state.value = _state.value.copy(
                         isMining = serviceState.isMining,
                         hashrate = serviceState.hashrate,
@@ -139,23 +140,16 @@ class MiningViewModel(
                         sessionEarnings = serviceState.sessionEarnings,
                         equipment = serviceState.equipment,
                         status = serviceState.status,
-                        teamSize = serviceState.teamSize,
                         isBrightActive = serviceState.isBrightActive,
                         sessionTimeRemaining = serviceState.sessionTimeRemaining,
                         adBoostActive = serviceState.adBoostActive,
                         adBoostTimeRemaining = serviceState.adBoostTimeRemaining,
-                        adRegion = serviceState.adRegion,
-                        regionalMultiplier = serviceState.regionalMultiplier,
                         isAdOpportunityAvailable = serviceState.isAdOpportunityAvailable,
                         isBlockSolveAvailable = serviceState.isBlockSolveAvailable,
                         isDataSdkOptedIn = serviceState.isDataSdkOptedIn,
                         maxHashrate = currentMaxHashrate
                     )
                     updateLevelLogic()
-                    
-                    if (oldMining != serviceState.isMining) {
-                        syncAllDataToFirebase()
-                    }
                 }
             }
         }
@@ -185,7 +179,7 @@ class MiningViewModel(
             auth.userFlow.collect { user ->
                 if (user != null) {
                     updateUserDisplay(user)
-                    authenticateAndSync()
+                    authenticateAndSync(user)
                     syncReferralAndTeamData(user.uid)
                     setupNotificationListener(user.uid)
                     _state.value = _state.value.copy(myInviteCode = referrals.getOrCreateReferralCode(user.uid))
@@ -244,55 +238,61 @@ class MiningViewModel(
         }
     }
 
-    private fun syncReferralAndTeamData(userId: String) {
-        viewModelScope.launch {
-            val db = FirebaseFirestore.getInstance()
-            try {
-                // 1. Sync Referrer Info
-                val userDoc = db.collection("users").document(userId).get().await()
-                val referrerUid = userDoc.getString("referrerUid")
-                if (referrerUid != null) {
-                    val referralDoc = db.collection("referrals").document(userId).get().await()
+    private suspend fun syncReferralAndTeamData(userId: String) {
+        val db = FirebaseFirestore.getInstance()
+        try {
+            // 1. Sync Referrer Info
+            val userDoc = db.collection("users").document(userId).get().await()
+            val referrerUid = userDoc.getString("referrerUid")
+            if (referrerUid != null) {
+                val referralDoc = db.collection("referrals").document(userId).get().await()
+                if (referralDoc.exists()) {
                     _state.value = _state.value.copy(
                         referrerUid = referrerUid,
                         referrerCode = referralDoc.getString("code") ?: "NODE_UPLINK"
                     )
                 }
-
-                // 2. Fetch Team Members and recalculate teamSize
-                val teamDocs = db.collection("referrals")
-                    .whereEqualTo("referrerUid", userId)
-                    .get().await()
-                
-                val currentTeamSize = teamDocs.size()
-                val members = mutableListOf<TeamMember>()
-                
-                for (doc in teamDocs.documents) {
-                    val memberUid = doc.getString("refereeUid") ?: continue
-                    val memberUserDoc = db.collection("users").document(memberUid).get().await()
-                    if (memberUserDoc.exists()) {
-                        members.add(TeamMember(
-                            username = memberUserDoc.getString("username") ?: "MINER_${memberUid.take(4)}",
-                            level = (memberUserDoc.getLong("userLevel") ?: 1L).toInt(),
-                            isMining = memberUserDoc.getBoolean("isMining") ?: false
-                        ))
-                    }
-                }
-
-                if (currentTeamSize != _state.value.teamSize) {
-                    db.collection("users").document(userId).update("teamSize", currentTeamSize).await()
-                }
-                
-                _state.value = _state.value.copy(
-                    teamSize = currentTeamSize,
-                    teamMembers = members
-                )
-
-                checkForUnclaimedReferralRewards(userId)
-
-            } catch (e: Exception) {
-                Log.e("MiningVM", "Referral sync failed", e)
             }
+
+            // 2. Fetch Team Members and recalculate teamSize
+            val teamDocs = db.collection("referrals")
+                .whereEqualTo("referrerUid", userId)
+                .get().await()
+            
+            val currentTeamSize = teamDocs.size()
+            val members = mutableListOf<TeamMember>()
+            
+            for (doc in teamDocs.documents) {
+                val memberUid = doc.getString("refereeUid") ?: continue
+                val memberUserDoc = db.collection("users").document(memberUid).get().await()
+                if (memberUserDoc.exists()) {
+                    members.add(TeamMember(
+                        username = memberUserDoc.getString("username") ?: "MINER_${memberUid.take(4)}",
+                        level = (memberUserDoc.getLong("userLevel") ?: 1L).toInt(),
+                        isMining = memberUserDoc.getBoolean("isMining") ?: false
+                    ))
+                }
+            }
+
+            // 3. Update local state and Firestore if teamSize changed
+            if (currentTeamSize != _state.value.teamSize) {
+                db.collection("users").document(userId).update("teamSize", currentTeamSize).await()
+            }
+            
+            val updatedState = _state.value.copy(
+                teamSize = currentTeamSize,
+                teamMembers = members
+            )
+            _state.value = updatedState
+            
+            // Sync the NEW team size with the background service immediately
+            miningService?.updateState(updatedState)
+
+            // 4. Check for dividends (Mining Kickbacks)
+            checkForUnclaimedReferralRewards(userId)
+
+        } catch (e: Exception) {
+            Log.e("MiningVM", "Referral sync failed", e)
         }
     }
 
@@ -391,87 +391,85 @@ class MiningViewModel(
         )
     }
 
-    private fun authenticateAndSync() {
-        viewModelScope.launch {
-            val user = auth.currentUser ?: return@launch
-            val cloudData = try { sync.downloadUserData(user.uid) } catch (e: Exception) { null }
+    private suspend fun authenticateAndSync(user: FirebaseUser): Map<String, Any>? {
+        val cloudData = try { sync.downloadUserData(user.uid) } catch (e: Exception) { null }
 
-            if (cloudData != null) {
-                val lastActive = cloudData["lastActive"] as? Long ?: System.currentTimeMillis()
-                val savedSessionEndTime = cloudData["sessionEndTime"] as? Long ?: 0L
-                val currentTime = System.currentTimeMillis()
-                
-                var currentBalance = cloudData["balance"] as? Double ?: 0.0
-                var sessionRemaining = savedSessionEndTime - currentTime
-                val savedUsername = cloudData["username"] as? String
-                val investment = cloudData["totalInvestment"] as? Double ?: 0.0
-                val savedSessionEarnings = cloudData["sessionEarnings"] as? Double ?: 0.0
-                val savedLevel = (cloudData["userLevel"] as? Long)?.toInt() ?: 1
-                val savedAdRegion = cloudData["adRegion"] as? String ?: "TIER_3"
-                val dataSdkOptIn = cloudData["dataSdkOptIn"] as? Boolean ?: false
-                val regionalMult = economy.getRegionalMultiplier(savedAdRegion)
-                
-                val joinedTs = cloudData["joinedTimestamp"] as? Long ?: user.metadata?.creationTimestamp ?: System.currentTimeMillis()
-                val lifetimeMined = cloudData["lifetimeMined"] as? Double ?: currentBalance
-                val maxHash = cloudData["maxHashrate"] as? Double ?: 0.0
-                val savedPhotoUrl = cloudData["profilePictureUrl"] as? String
-                
-                val rawOwnedAvatars = cloudData["ownedAvatars"]
-                val ownedAvatars = if (rawOwnedAvatars is List<*>) {
-                    rawOwnedAvatars.filterIsInstance<String>()
-                } else {
-                    listOf("Person", "Shield", "Hub", "Security", "Terminal")
-                }
-                
-                val savedTeamSize = (cloudData["teamSize"] as? Long)?.toInt() ?: 0
-                val savedReferrer = cloudData["referrerUid"] as? String
-
-                if (sessionRemaining > -SESSION_DURATION && savedSessionEndTime > lastActive) {
-                    val timePassedWhileOffline = minOf(currentTime, savedSessionEndTime) - lastActive
-                    if (timePassedWhileOffline > 0) {
-                        val hashrate = economy.calculateHashrate(
-                            equipment = _state.value.equipment, 
-                            streakDays = _state.value.streak,
-                            teamSize = savedTeamSize,
-                            regionalMultiplier = regionalMult,
-                            dataSdkBoost = dataSdkOptIn
-                        )
-                        val offlineEarnings = (timePassedWhileOffline / 1000.0) * (economy.calculateEarnings(hashrate) / 2.0)
-                        currentBalance += offlineEarnings
-                    }
-                }
-
-                _state.value = _state.value.copy(
-                    totalMined = currentBalance,
-                    sessionTimeRemaining = maxOf(0L, sessionRemaining),
-                    status = "Node Synced",
-                    username = if (savedUsername?.contains("GUEST") == true) _state.value.username else (savedUsername ?: _state.value.username).uppercase(),
-                    totalInvestment = investment,
-                    sessionEarnings = savedSessionEarnings,
-                    userLevel = savedLevel,
-                    adRegion = savedAdRegion,
-                    regionalMultiplier = regionalMult,
-                    isDataSdkOptedIn = dataSdkOptIn,
-                    joinedTimestamp = joinedTs,
-                    lifetimeMined = maxOf(lifetimeMined, currentBalance),
-                    maxHashrate = maxHash,
-                    profilePictureUrl = user.photoUrl?.toString() ?: savedPhotoUrl,
-                    ownedAvatars = ownedAvatars,
-                    teamSize = savedTeamSize,
-                    referrerUid = savedReferrer
-                )
-                miningService?.updateState(_state.value)
-                
-                if (sessionRemaining > 0) {
-                    startMining(isAutoResume = true)
-                }
+        if (cloudData != null) {
+            val lastActive = cloudData["lastActive"] as? Long ?: System.currentTimeMillis()
+            val savedSessionEndTime = cloudData["sessionEndTime"] as? Long ?: 0L
+            val currentTime = System.currentTimeMillis()
+            
+            var currentBalance = cloudData["balance"] as? Double ?: 0.0
+            var sessionRemaining = savedSessionEndTime - currentTime
+            val savedUsername = cloudData["username"] as? String
+            val investment = cloudData["totalInvestment"] as? Double ?: 0.0
+            val savedSessionEarnings = cloudData["sessionEarnings"] as? Double ?: 0.0
+            val savedLevel = (cloudData["userLevel"] as? Long)?.toInt() ?: 1
+            val savedAdRegion = cloudData["adRegion"] as? String ?: "TIER_3"
+            val dataSdkOptIn = cloudData["dataSdkOptIn"] as? Boolean ?: false
+            val regionalMult = economy.getRegionalMultiplier(savedAdRegion)
+            
+            val joinedTs = cloudData["joinedTimestamp"] as? Long ?: user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+            val lifetimeMined = cloudData["lifetimeMined"] as? Double ?: currentBalance
+            val maxHash = cloudData["maxHashrate"] as? Double ?: 0.0
+            val savedPhotoUrl = cloudData["profilePictureUrl"] as? String
+            
+            val rawOwnedAvatars = cloudData["ownedAvatars"]
+            val ownedAvatars = if (rawOwnedAvatars is List<*>) {
+                rawOwnedAvatars.filterIsInstance<String>()
             } else {
-                val initialTimestamp = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
-                _state.value = _state.value.copy(joinedTimestamp = initialTimestamp)
-                syncAllDataToFirebase()
+                listOf("Person", "Shield", "Hub", "Security", "Terminal")
             }
-            startSyncLoop(user.uid)
+            
+            val savedTeamSize = (cloudData["teamSize"] as? Long)?.toInt() ?: 0
+            val savedReferrer = cloudData["referrerUid"] as? String
+
+            if (sessionRemaining > -SESSION_DURATION && savedSessionEndTime > lastActive) {
+                val timePassedWhileOffline = minOf(currentTime, savedSessionEndTime) - lastActive
+                if (timePassedWhileOffline > 0) {
+                    val hashrate = economy.calculateHashrate(
+                        equipment = _state.value.equipment, 
+                        streakDays = _state.value.streak,
+                        teamSize = savedTeamSize,
+                        regionalMultiplier = regionalMult,
+                        dataSdkBoost = dataSdkOptIn
+                    )
+                    val offlineEarnings = (timePassedWhileOffline / 1000.0) * (economy.calculateEarnings(hashrate) / 2.0)
+                    currentBalance += offlineEarnings
+                }
+            }
+
+            _state.value = _state.value.copy(
+                totalMined = currentBalance,
+                sessionTimeRemaining = maxOf(0L, sessionRemaining),
+                status = "Node Synced",
+                username = if (savedUsername?.contains("GUEST") == true) _state.value.username else (savedUsername ?: _state.value.username).uppercase(),
+                totalInvestment = investment,
+                sessionEarnings = savedSessionEarnings,
+                userLevel = savedLevel,
+                adRegion = savedAdRegion,
+                regionalMultiplier = regionalMult,
+                isDataSdkOptedIn = dataSdkOptIn,
+                joinedTimestamp = joinedTs,
+                lifetimeMined = maxOf(lifetimeMined, currentBalance),
+                maxHashrate = maxHash,
+                profilePictureUrl = user.photoUrl?.toString() ?: savedPhotoUrl,
+                ownedAvatars = ownedAvatars,
+                teamSize = savedTeamSize,
+                referrerUid = savedReferrer
+            )
+            miningService?.updateState(_state.value)
+            
+            if (sessionRemaining > 0) {
+                startMining(isAutoResume = true)
+            }
+        } else {
+            val initialTimestamp = user.metadata?.creationTimestamp ?: System.currentTimeMillis()
+            _state.value = _state.value.copy(joinedTimestamp = initialTimestamp)
+            syncAllDataToFirebase()
         }
+        startSyncLoop(user.uid)
+        return cloudData
     }
 
     private fun startSyncLoop(userId: String) {

@@ -91,6 +91,9 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil.compose)
+    
+    // Modern Coroutines support for Firebase tasks
+    implementation(libs.kotlinx.coroutines.play.services)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
